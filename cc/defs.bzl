@@ -103,7 +103,7 @@ def cc_proto_library(**attrs):
       **attrs: Rule attributes
     """
 
-    # buildifier: disable=native-cc
+    # buildifier: disable=native-cc-proto
     native.cc_proto_library(**_add_tags(attrs))
 
 def fdo_prefetch_hints(**attrs):
