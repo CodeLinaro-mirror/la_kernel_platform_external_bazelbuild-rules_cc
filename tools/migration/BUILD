@@ -13,11 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-
-# Go rules
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
-
-# Python rules
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 package(default_visibility = ["//visibility:public"])
@@ -33,6 +29,7 @@ py_binary(
         "//third_party/com/github/bazelbuild/bazel/src/main/protobuf:crosstool_config_py_pb2",
         "@io_abseil_py//absl:app",
         "@io_abseil_py//absl/flags",
+        #internal proto upb dep,
     ],
 )
 
@@ -62,6 +59,7 @@ py_binary(
         "//third_party/com/github/bazelbuild/bazel/src/main/protobuf:crosstool_config_py_pb2",
         "@io_abseil_py//absl:app",
         "@io_abseil_py//absl/flags",
+        #internal proto upb dep,
     ],
 )
 
@@ -74,6 +72,7 @@ py_binary(
         "//third_party/com/github/bazelbuild/bazel/src/main/protobuf:crosstool_config_py_pb2",
         "@io_abseil_py//absl:app",
         "@io_abseil_py//absl/flags",
+        #internal proto upb dep,
     ],
 )
 
@@ -131,11 +130,6 @@ filegroup(
         "ctoolchain_compare.bzl",
     ],
 )
-
-exports_files([
-    "cc_toolchain_config_comparator.bzl",
-    "ctoolchain_compare.bzl",
-])
 
 bzl_library(
     name = "ctoolchain_compare_bzl",
