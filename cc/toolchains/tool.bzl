@@ -13,10 +13,11 @@
 # limitations under the License.
 """Implementation of cc_tool"""
 
+load("@bazel_skylib//rules/directory:providers.bzl", "DirectoryInfo")
 load("//cc/toolchains/impl:collect.bzl", "collect_data", "collect_provider")
 load(
     ":cc_toolchain_info.bzl",
-    "FeatureConstraintInfo",
+    "ToolCapabilityInfo",
     "ToolInfo",
 )
 
@@ -29,16 +30,16 @@ def _cc_tool_impl(ctx):
     else:
         fail("Expected cc_tool's src attribute to be either an executable or a single file")
 
-    runfiles = collect_data(ctx, ctx.attr.data + [ctx.attr.src])
+    runfiles = collect_data(ctx, ctx.attr.data + [ctx.attr.src] + ctx.attr.allowlist_include_directories)
     tool = ToolInfo(
         label = ctx.label,
         exe = exe,
         runfiles = runfiles,
-        requires_any_of = tuple(collect_provider(
-            ctx.attr.requires_any_of,
-            FeatureConstraintInfo,
-        )),
-        execution_requirements = tuple(ctx.attr.execution_requirements),
+        execution_requirements = tuple(ctx.attr.tags),
+        allowlist_include_directories = depset(
+            direct = [d[DirectoryInfo] for d in ctx.attr.allowlist_include_directories],
+        ),
+        capabilities = tuple(collect_provider(ctx.attr.capabilities, ToolCapabilityInfo)),
     )
 
     link = ctx.actions.declare_file(ctx.label.name)
@@ -67,38 +68,68 @@ cc_tool = rule(
             cfg = "exec",
             doc = """The underlying binary that this tool represents.
 
-Usually just a single prebuilt (eg. @sysroot//:bin/clang), but may be any
+Usually just a single prebuilt (eg. @toolchain//:bin/clang), but may be any
 executable label.
 """,
         ),
         "data": attr.label_list(
             allow_files = True,
-            doc = "Additional files that are required for this tool to run.",
-        ),
-        "execution_requirements": attr.string_list(
-            doc = "A list of strings that provide hints for execution environment compatibility (e.g. `requires-network`).",
-        ),
-        "requires_any_of": attr.label_list(
-            providers = [FeatureConstraintInfo],
-            doc = """This will be enabled when any of the constraints are met.
+            doc = """Additional files that are required for this tool to run.
 
-If omitted, this tool will be enabled unconditionally.
+Frequently, clang and gcc require additional files to execute as they often shell out to
+other binaries (e.g. `cc1`).
+""",
+        ),
+        "allowlist_include_directories": attr.label_list(
+            providers = [DirectoryInfo],
+            doc = """Include paths implied by using this tool.
+
+Compilers may include a set of built-in headers that are implicitly available
+unless flags like `-nostdinc` are provided. Bazel checks that all included
+headers are properly provided by a dependency or allowlisted through this
+mechanism.
+
+As a rule of thumb, only use this if Bazel is complaining about absolute paths in your
+toolchain and you've ensured that the toolchain is compiling with the `-no-canonical-prefixes`
+and/or `-fno-canonical-system-headers` arguments.
+
+This can help work around errors like:
+`the source file 'main.c' includes the following non-builtin files with absolute paths
+(if these are builtin files, make sure these paths are in your toolchain)`.
+""",
+        ),
+        "capabilities": attr.label_list(
+            providers = [ToolCapabilityInfo],
+            doc = """Declares that a tool is capable of doing something.
+
+For example, `@rules_cc//cc/toolchains/capabilities:supports_pic`.
 """,
         ),
     },
     provides = [ToolInfo],
-    doc = """Declares a tool that can be bound to action configs.
+    doc = """Declares a tool for use by toolchain actions.
 
-A tool is a binary with extra metadata for the action config rule to consume
-(eg. execution_requirements).
+`cc_tool` rules are used in a `cc_tool_map` rule to ensure all files and
+metadata required to run a tool are available when constructing a `cc_toolchain`.
+
+In general, include all files that are always required to run a tool (e.g. libexec/** and
+cross-referenced tools in bin/*) in the [data](#cc_tool-data) attribute. If some files are only
+required when certain flags are passed to the tool, consider using a `cc_args` rule to
+bind the files to the flags that require them. This reduces the overhead required to properly
+enumerate a sandbox with all the files required to run a tool, and ensures that there isn't
+unintentional leakage across configurations and actions.
 
 Example:
 ```
+load("//cc/toolchains:tool.bzl", "cc_tool")
+
 cc_tool(
     name = "clang_tool",
     executable = "@llvm_toolchain//:bin/clang",
     # Suppose clang needs libc to run.
     data = ["@llvm_toolchain//:lib/x86_64-linux-gnu/libc.so.6"]
+    tags = ["requires-network"],
+    capabilities = ["//cc/toolchains/capabilities:supports_pic"],
 )
 ```
 """,
