@@ -17,8 +17,6 @@ load("@bazel_skylib//lib:structs.bzl", "structs")
 load("@rules_testing//lib:truth.bzl", _subjects = "subjects")
 load(
     "//cc/toolchains:cc_toolchain_info.bzl",
-    "ActionTypeConfigInfo",
-    "ActionTypeConfigSetInfo",
     "ActionTypeInfo",
     "ActionTypeSetInfo",
     "ArgsInfo",
@@ -28,6 +26,8 @@ load(
     "FeatureSetInfo",
     "MutuallyExclusiveCategoryInfo",
     "NestedArgsInfo",
+    "ToolCapabilityInfo",
+    "ToolConfigInfo",
     "ToolInfo",
     "ToolchainConfigInfo",
 )
@@ -43,6 +43,10 @@ runfiles_subject = lambda value, meta: _subjects.depset_file(value.files, meta =
 # The string type has .equals(), which is all we can really do for an unknown
 # type.
 unknown_subject = _subjects.str
+
+# Directory depsets are quite complex, so just simplify them as a list of paths.
+# buildifier: disable=name-conventions
+_FakeDirectoryDepset = lambda value, *, meta: _subjects.collection([v.path for v in value.to_list()], meta = meta)
 
 # buildifier: disable=name-conventions
 _ActionTypeFactory = generate_factory(
@@ -79,6 +83,7 @@ _FEATURE_FLAGS = dict(
     overridable = _subjects.bool,
     external = _subjects.bool,
     overrides = None,
+    allowlist_include_directories = _FakeDirectoryDepset,
 )
 
 # Break the dependency loop.
@@ -142,6 +147,7 @@ _ArgsFactory = generate_factory(
         # Use .factory so it's not inlined.
         nested = optional_subject(_NestedArgsFactory.factory),
         requires_any_of = ProviderSequence(_FeatureConstraintFactory),
+        allowlist_include_directories = _FakeDirectoryDepset,
     ),
 )
 
@@ -156,6 +162,7 @@ _ArgsListFactory = generate_factory(
             files = _subjects.depset_file,
         ))({value.action: value for value in values}, meta = meta),
         files = _subjects.depset_file,
+        allowlist_include_directories = _FakeDirectoryDepset,
     ),
 )
 
@@ -173,36 +180,33 @@ _FeatureFactory = generate_factory(
 )
 
 # buildifier: disable=name-conventions
+_ToolCapabilityFactory = generate_factory(
+    ToolCapabilityInfo,
+    "ToolCapabilityInfo",
+    dict(
+        name = _subjects.str,
+    ),
+)
+
+# buildifier: disable=name-conventions
 _ToolFactory = generate_factory(
     ToolInfo,
     "ToolInfo",
     dict(
         exe = _subjects.file,
         runfiles = runfiles_subject,
-        requires_any_of = ProviderSequence(_FeatureConstraintFactory),
         execution_requirements = _subjects.collection,
+        allowlist_include_directories = _FakeDirectoryDepset,
+        capabilities = ProviderSequence(_ToolCapabilityFactory),
     ),
 )
 
 # buildifier: disable=name-conventions
-_ActionTypeConfigFactory = generate_factory(
-    ActionTypeConfigInfo,
-    "ActionTypeConfigInfo",
+_ToolConfigFactory = generate_factory(
+    ToolConfigInfo,
+    "ToolConfigInfo",
     dict(
-        action_type = _ActionTypeFactory,
-        tools = ProviderSequence(_ToolFactory),
-        args = ProviderSequence(_ArgsFactory),
-        implies = ProviderDepset(_FeatureFactory),
-        files = runfiles_subject,
-    ),
-)
-
-# buildifier: disable=name-conventions
-_ActionTypeConfigSetFactory = generate_factory(
-    ActionTypeConfigSetInfo,
-    "ActionTypeConfigSetInfo",
-    dict(
-        configs = dict_key_subject(_ActionTypeConfigFactory.factory),
+        configs = dict_key_subject(_ToolFactory.factory),
     ),
 )
 
@@ -212,9 +216,11 @@ _ToolchainConfigFactory = generate_factory(
     "ToolchainConfigInfo",
     dict(
         features = ProviderDepset(_FeatureFactory),
-        action_type_configs = dict_key_subject(_ActionTypeConfigFactory.factory),
+        enabled_features = _subjects.collection,
+        tool_map = optional_subject(_ToolConfigFactory.factory),
         args = ProviderSequence(_ArgsFactory),
         files = dict_key_subject(_subjects.depset_file),
+        allowlist_include_directories = _FakeDirectoryDepset,
     ),
 )
 
@@ -229,7 +235,7 @@ FACTORIES = [
     _FeatureConstraintFactory,
     _FeatureSetFactory,
     _ToolFactory,
-    _ActionTypeConfigSetFactory,
+    _ToolConfigFactory,
     _ToolchainConfigFactory,
 ]
 
