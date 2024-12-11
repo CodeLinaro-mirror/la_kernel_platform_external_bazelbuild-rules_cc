@@ -87,6 +87,7 @@ ArgsInfo = provider(
         "nested": "(Optional[NestedArgsInfo]) The args expand. Equivalent to a flag group.",
         "files": "(depset[File]) Files required for the args",
         "env": "(dict[str, str]) Environment variables to apply",
+        "allowlist_include_directories": "(depset[DirectoryInfo]) Include directories implied by these arguments that should be allowlisted in Bazel's include checker",
     },
 )
 ArgsListInfo = provider(
@@ -97,6 +98,7 @@ ArgsListInfo = provider(
         "args": "(Sequence[ArgsInfo]) The flag sets contained within",
         "files": "(depset[File]) The files required for all of the arguments",
         "by_action": "(Sequence[struct(action=ActionTypeInfo, args=List[ArgsInfo], files=depset[Files])]) Relevant information about the args keyed by the action type.",
+        "allowlist_include_directories": "(depset[DirectoryInfo]) Include directories implied by these arguments that should be allowlisted in Bazel's include checker",
     },
 )
 
@@ -114,6 +116,7 @@ FeatureInfo = provider(
         "external": "(bool) Whether a feature is defined elsewhere.",
         "overridable": "(bool) Whether the feature is an overridable feature.",
         "overrides": "(Optional[FeatureInfo]) The feature that this overrides. Must be a known feature",
+        "allowlist_include_directories": "(depset[DirectoryInfo]) Include directories implied by this feature that should be allowlisted in Bazel's include checker",
     },
 )
 FeatureSetInfo = provider(
@@ -150,31 +153,28 @@ ToolInfo = provider(
     fields = {
         "label": "(Label) The label defining this provider. Place in error messages to simplify debugging",
         "exe": "(File) The file corresponding to the tool",
-        "runfiles": "(depset[File]) The files required to run the tool",
-        "requires_any_of": "(Sequence[FeatureConstraintInfo]) A set of constraints, one of which is required to enable the tool. Equivalent to with_features",
+        "runfiles": "(runfiles) The files required to run the tool",
         "execution_requirements": "(Sequence[str]) A set of execution requirements of the tool",
+        "allowlist_include_directories": "(depset[DirectoryInfo]) Built-in include directories implied by this tool that should be allowlisted in Bazel's include checker",
+        "capabilities": "(Sequence[ToolCapabilityInfo]) Capabilities supported by the tool.",
     },
 )
 
-ActionTypeConfigInfo = provider(
-    doc = "Configuration of a Bazel action.",
+ToolCapabilityInfo = provider(
+    doc = "A capability associated with a tool (eg. supports_pic).",
     # @unsorted-dict-items
     fields = {
         "label": "(Label) The label defining this provider. Place in error messages to simplify debugging",
-        "action_type": "(ActionTypeInfo) The type of the action",
-        "tools": "(Sequence[ToolInfo]) The tool applied to the action will be the first tool in the sequence with a feature set that matches the feature configuration",
-        "args": "(Sequence[ArgsInfo]) Set of flag sets the action sets",
-        "implies": "(depset[FeatureInfo]) Set of features implied by this action config",
-        "files": "(runfiles) The files required to run these actions",
+        "feature": "(FeatureInfo) The feature this capability defines",
     },
 )
 
-ActionTypeConfigSetInfo = provider(
-    doc = "A set of action configs",
+ToolConfigInfo = provider(
+    doc = "A mapping from action to tool",
     # @unsorted-dict-items
     fields = {
         "label": "(Label) The label defining this provider. Place in error messages to simplify debugging",
-        "configs": "(dict[ActionTypeInfo, ActionTypeConfigInfo]) A set of action configs",
+        "configs": "(dict[ActionTypeInfo, ToolInfo]) A mapping from action to tool.",
     },
 )
 
@@ -184,8 +184,10 @@ ToolchainConfigInfo = provider(
     fields = {
         "label": "(Label) The label defining this provider. Place in error messages to simplify debugging",
         "features": "(Sequence[FeatureInfo]) The features available for this toolchain",
-        "action_type_configs": "(dict[ActionTypeInfo, ActionTypeConfigInfo]) The configuration of action configs for the toolchain.",
+        "enabled_features": "(Sequence[FeatureInfo]) The features That are enabled by default for this toolchain",
+        "tool_map": "(ToolConfigInfo) A provider mapping toolchain action types to tools.",
         "args": "(Sequence[ArgsInfo]) A list of arguments to be unconditionally applied to the toolchain.",
         "files": "(dict[ActionTypeInfo, depset[File]]) Files required for the toolchain, keyed by the action type.",
+        "allowlist_include_directories": "(depset[DirectoryInfo]) Built-in include directories implied by this toolchain's args and tools that should be allowlisted in Bazel's include checker",
     },
 )
