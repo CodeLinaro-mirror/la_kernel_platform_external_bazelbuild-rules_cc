@@ -21,6 +21,7 @@ load(
 )
 load(
     "//cc/toolchains:cc_toolchain_info.bzl",
+    "ActionTypeInfo",
     "ArgsInfo",
     "FeatureConstraintInfo",
     "FeatureInfo",
@@ -36,21 +37,28 @@ load(
 visibility("private")
 
 _C_COMPILE_FILE = "tests/rule_based_toolchain/testdata/file1"
+_SUBDIR1 = "tests/rule_based_toolchain/testdata/subdir1"
+_SUBDIR1_FILES = ["tests/rule_based_toolchain/testdata/subdir1/file_foo"]
+
+def _sentinel_feature_test(env, targets):
+    sentinel_feature = env.expect.that_target(targets.sentinel_feature).provider(FeatureInfo)
+    sentinel_feature.name().equals("sentinel_feature_name")
+    sentinel_feature.args().args().contains_exactly([])
 
 def _simple_feature_test(env, targets):
     simple = env.expect.that_target(targets.simple).provider(FeatureInfo)
     simple.name().equals("feature_name")
-    simple.args().args().contains_exactly([targets.c_compile.label])
+    simple.args().args().contains_exactly([targets.c_compile_args.label])
     simple.enabled().equals(False)
     simple.overrides().is_none()
     simple.overridable().equals(False)
 
     simple.args().files().contains_exactly([_C_COMPILE_FILE])
     c_compile_action = simple.args().by_action().get(
-        targets.c_compile[ArgsInfo].actions.to_list()[0],
+        targets.c_compile_args[ArgsInfo].actions.to_list()[0],
     )
     c_compile_action.files().contains_exactly([_C_COMPILE_FILE])
-    c_compile_action.args().contains_exactly([targets.c_compile[ArgsInfo]])
+    c_compile_action.args().contains_exactly([targets.c_compile_args[ArgsInfo]])
 
     legacy = convert_feature(simple.actual)
     env.expect.that_str(legacy.name).equals("feature_name")
@@ -144,23 +152,37 @@ def _feature_can_be_overridden_test(env, targets):
     overrides.name().equals("builtin_feature")
     overrides.overrides().some().label().equals(targets.builtin_feature.label)
 
+def _feature_with_directory_test(env, targets):
+    with_dir = env.expect.that_target(targets.feature_with_dir).provider(FeatureInfo)
+    with_dir.allowlist_include_directories().contains_exactly([_SUBDIR1])
+
+    c_compile = env.expect.that_target(targets.feature_with_dir).provider(FeatureInfo).args().by_action().get(
+        targets.c_compile[ActionTypeInfo],
+    )
+    c_compile.files().contains_at_least(_SUBDIR1_FILES)
+
 TARGETS = [
+    ":args_with_dir",
     ":builtin_feature",
-    ":c_compile",
+    ":c_compile_args",
     ":category",
     ":direct_constraint",
     ":feature_set",
+    ":feature_with_dir",
     ":implies",
     ":mutual_exclusion_feature",
     ":overrides",
     ":requires",
+    ":sentinel_feature",
     ":simple",
     ":simple2",
     ":transitive_constraint",
+    "//tests/rule_based_toolchain/actions:c_compile",
 ]
 
 # @unsorted-dict-items
 TESTS = {
+    "sentinel_feature_test": _sentinel_feature_test,
     "simple_feature_test": _simple_feature_test,
     "feature_collects_requirements_test": _feature_collects_requirements_test,
     "feature_collects_implies_test": _feature_collects_implies_test,
@@ -170,4 +192,5 @@ TESTS = {
     "feature_constraint_collects_transitive_features_test": _feature_constraint_collects_transitive_features_test,
     "external_feature_is_a_feature_test": _external_feature_is_a_feature_test,
     "feature_can_be_overridden_test": _feature_can_be_overridden_test,
+    "feature_with_directory_test": _feature_with_directory_test,
 }
