@@ -12,10 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
-bool_flag(
-    name = "experimental_enable_rule_based_toolchains",
-    build_setting_default = False,
+bzl_library(
+    name = "toolchain_rules",
+    srcs = glob(["*.bzl"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//cc:action_names_bzl",
+        "//cc:cc_toolchain_config_lib_bzl",
+        "//cc:find_cc_toolchain_bzl",
+        "//cc/private/rules_impl:cc_flags_supplier_lib_bzl",
+        "//cc/private/rules_impl:native_bzl",
+        "//cc/toolchains/impl:toolchain_impl_rules",
+        "@bazel_skylib//rules/directory:glob",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/*.bzl",
+        "**/BUILD",
+    ]),
     visibility = ["//visibility:public"],
 )
