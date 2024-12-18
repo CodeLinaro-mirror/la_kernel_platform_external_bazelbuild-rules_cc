@@ -13,9 +13,9 @@
 # limitations under the License.
 """Helper functions to create and validate a ToolchainConfigInfo."""
 
-load("//cc/toolchains:cc_toolchain_info.bzl", "ToolchainConfigInfo")
+load("//cc/toolchains:cc_toolchain_info.bzl", "ToolConfigInfo", "ToolchainConfigInfo")
 load(":args_utils.bzl", "get_action_type")
-load(":collect.bzl", "collect_action_type_config_sets", "collect_args_lists", "collect_features")
+load(":collect.bzl", "collect_args_lists", "collect_features")
 
 visibility([
     "//cc/toolchains/...",
@@ -54,9 +54,9 @@ def _feature_key(feature):
     # This should be sufficiently unique.
     return (feature.label, feature.name)
 
-def _get_known_features(features, fail):
+def _get_known_features(features, capability_features, fail):
     feature_names = {}
-    for ft in features:
+    for ft in capability_features + features:
         if ft.name in feature_names:
             other = feature_names[ft.name]
             if other.overrides != ft and ft.overrides != other:
@@ -85,14 +85,6 @@ def _validate_requires_any_of(fn, self, known_features, fail):
     if self.requires_any_of and not valid:
         fail(_INVALID_CONSTRAINT_ERR.format(provider = self.label))
 
-def _validate_requires_any_of_constraint(self, known_features, fail):
-    return _validate_requires_any_of(
-        lambda constraint: constraint.all_of.to_list(),
-        self,
-        known_features,
-        fail,
-    )
-
 def _validate_requires_any_of_feature_set(self, known_features, fail):
     return _validate_requires_any_of(
         lambda feature_set: feature_set.features.to_list(),
@@ -107,17 +99,12 @@ def _validate_implies(self, known_features, fail = fail):
             fail(_UNKNOWN_FEATURE_ERR.format(self = self.label, ft = ft.label))
 
 def _validate_args(self, known_features, fail):
-    _validate_requires_any_of_constraint(self, known_features, fail = fail)
-
-def _validate_tool(self, known_features, fail):
-    _validate_requires_any_of_constraint(self, known_features, fail = fail)
-
-def _validate_action_config(self, known_features, fail):
-    _validate_implies(self, known_features, fail = fail)
-    for tool in self.tools:
-        _validate_tool(tool, known_features, fail = fail)
-    for args in self.args:
-        _validate_args(args, known_features, fail = fail)
+    return _validate_requires_any_of(
+        lambda constraint: constraint.all_of.to_list(),
+        self,
+        known_features,
+        fail,
+    )
 
 def _validate_feature(self, known_features, fail):
     _validate_requires_any_of_feature_set(self, known_features, fail = fail)
@@ -126,53 +113,72 @@ def _validate_feature(self, known_features, fail):
     _validate_implies(self, known_features, fail = fail)
 
 def _validate_toolchain(self, fail = fail):
-    known_features = _get_known_features(self.features, fail = fail)
+    capabilities = []
+    for tool in self.tool_map.configs.values():
+        capabilities.extend([cap.feature for cap in tool.capabilities])
+    known_features = _get_known_features(self.features, capabilities, fail = fail)
 
     for feature in self.features:
         _validate_feature(feature, known_features, fail = fail)
-    for atc in self.action_type_configs.values():
-        _validate_action_config(atc, known_features, fail = fail)
-    for args in self.args:
+    for args in self.args.args:
         _validate_args(args, known_features, fail = fail)
 
-def _collect_files_for_action_type(atc, features, args):
-    transitive_files = [atc.files.files, get_action_type(args, atc.action_type).files]
+def _collect_files_for_action_type(action_type, tool_map, features, args):
+    transitive_files = [tool_map[action_type].runfiles.files, get_action_type(args, action_type).files]
     for ft in features:
-        transitive_files.append(get_action_type(ft.args, atc.action_type).files)
+        transitive_files.append(get_action_type(ft.args, action_type).files)
 
     return depset(transitive = transitive_files)
 
-def toolchain_config_info(label, features = [], args = [], action_type_configs = [], fail = fail):
+def toolchain_config_info(label, known_features = [], enabled_features = [], args = [], tool_map = None, fail = fail):
     """Generates and validates a ToolchainConfigInfo from lists of labels.
 
     Args:
         label: (Label) The label to apply to the ToolchainConfigInfo
-        features: (List[Target]) A list of targets providing FeatureSetInfo
+        known_features: (List[Target]) A list of features that can be enabled.
+        enabled_features: (List[Target]) A list of features that are enabled by
+          default. Every enabled feature is implicitly also a known feature.
         args: (List[Target]) A list of targets providing ArgsListInfo
-        action_type_configs: (List[Target]) A list of targets providing
-          ActionTypeConfigSetInfo
+        tool_map: (Target) A target providing ToolMapInfo.
         fail: A fail function. Use only during tests.
     Returns:
         A validated ToolchainConfigInfo
     """
-    features = collect_features(features).to_list()
-    args = collect_args_lists(args, label = label)
-    action_type_configs = collect_action_type_config_sets(
-        action_type_configs,
-        label = label,
-        fail = fail,
-    ).configs
-    files = {
-        atc.action_type: _collect_files_for_action_type(atc, features, args)
-        for atc in action_type_configs.values()
-    }
 
+    # Later features will come after earlier features on the command-line, and
+    # thus override them. Because of this, we ensure that known_features comes
+    # *after* enabled_features, so that if we do enable them, they override the
+    # default feature flags.
+    features = collect_features(enabled_features + known_features).to_list()
+    enabled_features = collect_features(enabled_features).to_list()
+
+    if tool_map == None:
+        fail("tool_map is required")
+
+        # The `return` here is to support testing, since injecting `fail()` has a
+        # side-effect of allowing code to continue.
+        return None  # buildifier: disable=unreachable
+
+    args = collect_args_lists(args, label = label)
+    tools = tool_map[ToolConfigInfo].configs
+    files = {
+        action_type: _collect_files_for_action_type(action_type, tools, features, args)
+        for action_type in tools.keys()
+    }
+    allowlist_include_directories = depset(
+        transitive = [
+            src.allowlist_include_directories
+            for src in features + tools.values()
+        ] + [args.allowlist_include_directories],
+    )
     toolchain_config = ToolchainConfigInfo(
         label = label,
         features = features,
-        action_type_configs = action_type_configs,
-        args = args.args,
+        enabled_features = enabled_features,
+        tool_map = tool_map[ToolConfigInfo],
+        args = args,
         files = files,
+        allowlist_include_directories = allowlist_include_directories,
     )
     _validate_toolchain(toolchain_config, fail = fail)
     return toolchain_config
