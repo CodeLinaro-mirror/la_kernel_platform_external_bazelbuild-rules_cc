@@ -54,6 +54,21 @@ cc_action_type(
 )
 
 cc_action_type(
+    name = "cpp_module_deps_scanning",
+    action_name = ACTION_NAMES.cpp_module_deps_scanning,
+)
+
+cc_action_type(
+    name = "cpp20_module_compile",
+    action_name = ACTION_NAMES.cpp20_module_compile,
+)
+
+cc_action_type(
+    name = "cpp20_module_codegen",
+    action_name = ACTION_NAMES.cpp20_module_codegen,
+)
+
+cc_action_type(
     name = "cpp_module_compile",
     action_name = ACTION_NAMES.cpp_module_compile,
 )
@@ -66,6 +81,11 @@ cc_action_type(
 cc_action_type(
     name = "preprocess_assemble",
     action_name = ACTION_NAMES.preprocess_assemble,
+)
+
+cc_action_type(
+    name = "llvm_cov",
+    action_name = ACTION_NAMES.llvm_cov,
 )
 
 cc_action_type(
@@ -120,7 +140,12 @@ cc_action_type(
 
 cc_action_type(
     name = "objcopy_embed_data",
-    action_name = "objcopy_embed_data",
+    action_name = ACTION_NAMES.objcopy_embed_data,
+)
+
+cc_action_type(
+    name = "validate_static_library",
+    action_name = ACTION_NAMES.validate_static_library,
 )
 
 # ld_embed_data is only available within google.
@@ -185,6 +210,13 @@ cc_action_type_set(
 )
 
 cc_action_type_set(
+    name = "c_compile_actions",
+    actions = [
+        ":c_compile",
+    ],
+)
+
+cc_action_type_set(
     name = "cpp_compile_actions",
     actions = [
         ":linkstamp_compile",
@@ -201,8 +233,10 @@ cc_action_type_set(
     name = "compile_actions",
     actions = [
         ":cpp_compile_actions",
-        ":c_compile",
+        ":c_compile_actions",
         ":assembly_actions",
+        ":objc_compile",
+        ":objcpp_compile",
     ],
 )
 
@@ -259,9 +293,13 @@ cc_action_type_set(
         ":cpp_module_codegen",
         ":cpp_header_analysis",
         ":cpp_header_parsing",
+        ":cpp_module_deps_scanning",
+        ":cpp20_module_compile",
+        ":cpp20_module_codegen",
         ":cpp_module_compile",
         ":assemble",
         ":preprocess_assemble",
+        ":llvm_cov",
         ":lto_indexing",
         ":lto_backend",
         ":lto_index_for_executable",
@@ -280,5 +318,6 @@ cc_action_type_set(
         ":objcpp_compile",
         ":objcpp_executable",
         ":clif_match",
+        ":validate_static_library",
     ],
 )

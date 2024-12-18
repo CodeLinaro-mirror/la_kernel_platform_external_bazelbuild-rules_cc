@@ -12,15 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This becomes the BUILD file for @local_config_cc// under non-FreeBSD unixes.
-
-package(default_visibility = ["//visibility:public"])
+# This becomes the BUILD file for @local_config_cc// under non-BSD unixes.
 
 load(":cc_toolchain_config.bzl", "cc_toolchain_config")
 load(":armeabi_cc_toolchain_config.bzl", "armeabi_cc_toolchain_config")
-load("@rules_cc//cc:defs.bzl", "cc_toolchain", "cc_toolchain_suite")
+load("@rules_cc//cc/toolchains:cc_toolchain.bzl", "cc_toolchain")
+load("@rules_cc//cc/toolchains:cc_toolchain_suite.bzl", "cc_toolchain_suite")
+
+package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
+
+cc_library(name = "empty_lib")
+
+# Label flag for extra libraries to be linked into every binary.
+# TODO(bazel-team): Support passing flag multiple times to build a list.
+label_flag(
+    name = "link_extra_libs",
+    build_setting_default = ":empty_lib",
+)
+
+# The final extra library to be linked into every binary target. This collects
+# the above flag, but may also include more libraries depending on config.
+cc_library(
+    name = "link_extra_lib",
+    deps = [
+        ":link_extra_libs",
+    ],
+)
 
 cc_library(
     name = "malloc",
@@ -37,8 +56,22 @@ filegroup(
 )
 
 filegroup(
+    name = "validate_static_library",
+    srcs = ["validate_static_library.sh"],
+)
+
+filegroup(
+    name = "deps_scanner_wrapper",
+    srcs = ["deps_scanner_wrapper.sh"],
+)
+filegroup(
     name = "compiler_deps",
     srcs = glob(["extra_tools/**"], allow_empty = True) + [%{cc_compiler_deps}],
+)
+
+filegroup(
+    name = "ar_files",
+    srcs = [":compiler_deps"] + [%{ar_deps}],
 )
 
 # This is the entry point for --crosstool_top.  Toolchains are found
@@ -66,7 +99,9 @@ cc_toolchain(
     linker_files = ":compiler_deps",
     objcopy_files = ":empty",
     strip_files = ":empty",
-    supports_param_files = %{supports_param_files},
+    supports_header_parsing = 1,
+    supports_param_files = 1,
+    module_map = %{modulemap},
 )
 
 cc_toolchain_config(
@@ -84,6 +119,7 @@ cc_toolchain_config(
     compile_flags = [%{compile_flags}],
     opt_compile_flags = [%{opt_compile_flags}],
     dbg_compile_flags = [%{dbg_compile_flags}],
+    conly_flags = [%{conly_flags}],
     cxx_flags = [%{cxx_flags}],
     link_flags = [%{link_flags}],
     link_libs = [%{link_libs}],
@@ -92,6 +128,7 @@ cc_toolchain_config(
     coverage_compile_flags = [%{coverage_compile_flags}],
     coverage_link_flags = [%{coverage_link_flags}],
     supports_start_end_lib = %{supports_start_end_lib},
+    extra_flags_per_feature = %{extra_flags_per_feature},
 )
 
 # Android tooling requires a default toolchain for the armeabi-v7a cpu.
