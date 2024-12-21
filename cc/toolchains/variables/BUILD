@@ -156,8 +156,15 @@ cc_variable(
 
 cc_variable(
     name = "libraries_to_link",
-    actions = ["//cc/toolchains/actions:link_actions"],
+    actions = [
+        "//cc/toolchains/actions:cpp_link_static_library",
+        "//cc/toolchains/actions:link_actions",
+    ],
     type = types.option(types.list(types.struct(
+        name = types.string,
+        is_whole_archive = types.bool,
+        object_files = types.list(types.file),
+        path = types.string,
         shared_libraries = types.list(types.struct(
             name = types.string,
             is_whole_archive = types.bool,
@@ -165,7 +172,54 @@ cc_variable(
             path = types.file,
             type = types.string,
         )),
+        type = types.string,
     ))),
+)
+
+cc_variable(
+    name = "libraries_to_link.type",
+    actions = [
+        "//cc/toolchains/actions:cpp_link_static_library",
+        "//cc/toolchains/actions:link_actions",
+    ],
+    # See :libraries_to_link.
+    type = types.string,
+)
+
+cc_variable(
+    name = "libraries_to_link.name",
+    actions = [
+        "//cc/toolchains/actions:cpp_link_static_library",
+        "//cc/toolchains/actions:link_actions",
+    ],
+    # See :libraries_to_link.
+    type = types.string,
+)
+
+cc_variable(
+    name = "libraries_to_link.path",
+    actions = [
+        "//cc/toolchains/actions:cpp_link_static_library",
+        "//cc/toolchains/actions:link_actions",
+    ],
+    # See :libraries_to_link.
+    type = types.string,
+)
+
+cc_variable(
+    name = "libraries_to_link.object_files",
+    actions = [
+        "//cc/toolchains/actions:cpp_link_static_library",
+        "//cc/toolchains/actions:link_actions",
+    ],
+    # See :libraries_to_link.
+    type = types.list(types.file),
+)
+
+cc_variable(
+    name = "libraries_to_link.is_whole_archive",
+    actions = ["//cc/toolchains/actions:link_actions"],
+    type = types.bool,
 )
 
 cc_variable(
@@ -213,8 +267,11 @@ cc_variable(
 
 cc_variable(
     name = "linker_param_file",
-    actions = ["//cc/toolchains/actions:link_actions"],
-    type = types.file,
+    actions = [
+        "//cc/toolchains/actions:cpp_link_static_library",
+        "//cc/toolchains/actions:link_actions",
+    ],
+    type = types.option(types.file),
 )
 
 cc_variable(
@@ -255,13 +312,19 @@ cc_variable(
 
 cc_variable(
     name = "output_execpath",
-    actions = ["//cc/toolchains/actions:link_actions"],
+    actions = [
+        "//cc/toolchains/actions:cpp_link_static_library",
+        "//cc/toolchains/actions:link_actions",
+    ],
     type = types.option(types.directory),
 )
 
 cc_variable(
     name = "output_file",
-    actions = ["//cc/toolchains/actions:compile_actions"],
+    actions = [
+        "//cc/toolchains/actions:compile_actions",
+        "//cc/toolchains/actions:strip",
+    ],
     type = types.file,
 )
 
@@ -337,10 +400,8 @@ cc_variable(
     type = types.list(types.string),
 )
 
-cc_variable(
-    name = "sysroot",
-    type = types.directory,
-)
+# Instead of the "sysroot" variable, use the cc_sysroot macro in
+# //cc/toolchains/args:sysroot.bzl
 
 cc_variable(
     name = "system_include_paths",
@@ -463,7 +524,6 @@ cc_builtin_variables(
         ":source_file",
         ":strip_debug_symbols",
         ":stripopts",
-        ":sysroot",
         ":system_include_paths",
         ":thinlto_index",
         ":thinlto_indexing_param_file",

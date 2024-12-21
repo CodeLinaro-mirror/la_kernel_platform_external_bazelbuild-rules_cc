@@ -97,6 +97,7 @@ cc_external_feature(
 
 cc_external_feature(
     name = "shared_flag",
+    deprecation = "Use //cc/toolchains/args/shared_flag instead",
     feature_name = "shared_flag",
     overridable = True,
 )
@@ -115,6 +116,7 @@ cc_external_feature(
 
 cc_external_feature(
     name = "runtime_library_search_directories",
+    deprecation = "Use //cc/toolchains/args/runtime_library_search_directories instead",
     feature_name = "runtime_library_search_directories",
     overridable = True,
 )
@@ -127,18 +129,21 @@ cc_external_feature(
 
 cc_external_feature(
     name = "archiver_flags",
+    deprecation = "Use //cc/toolchains/args/archiver_flags instead",
     feature_name = "archiver_flags",
     overridable = True,
 )
 
 cc_external_feature(
     name = "libraries_to_link",
+    deprecation = "Use //cc/toolchains/args/libraries_to_link instead",
     feature_name = "libraries_to_link",
     overridable = True,
 )
 
 cc_external_feature(
     name = "force_pic_flags",
+    deprecation = "Use //cc/toolchains/args/force_pic_flags instead",
     feature_name = "force_pic_flags",
     overridable = True,
 )
@@ -203,11 +208,8 @@ cc_external_feature(
     overridable = True,
 )
 
-cc_external_feature(
-    name = "sysroot",
-    feature_name = "sysroot",
-    overridable = True,
-)
+# Instead of the "sysroot" legacy flag, use the cc_sysroot macro in
+# //cc/toolchains/args:sysroot.bzl
 
 cc_external_feature(
     name = "unfiltered_compile_flags",
@@ -217,6 +219,7 @@ cc_external_feature(
 
 cc_external_feature(
     name = "linker_param_file",
+    deprecation = "Use //cc/toolchains/args/linker_param_file instead",
     feature_name = "linker_param_file",
     overridable = True,
 )
@@ -269,7 +272,6 @@ cc_feature_set(
         ":gcc_coverage_map_format",
         ":fully_static_link",
         ":user_compile_flags",
-        ":sysroot",
         ":unfiltered_compile_flags",
         ":linker_param_file",
         ":compiler_input_flags",
