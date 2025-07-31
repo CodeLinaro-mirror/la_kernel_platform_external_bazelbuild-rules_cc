@@ -649,7 +649,6 @@ def _get_msys_mingw_vars(repository_ctx):
 
 def _get_msvc_vars(repository_ctx, paths, target_arch = "x64", msvc_vars_x64 = None):
     """Get the variables we need to populate the MSVC toolchains."""
-    msvc_vars = dict()
     vc_path = find_vc_path(repository_ctx)
     missing_tools = None
 
@@ -827,8 +826,7 @@ def _get_clang_cl_vars(repository_ctx, paths, msvc_vars, target_arch):
         "%{clang_cl_cl_path_" + target_arch + "}": clang_cl_path,
         "%{clang_cl_link_path_" + target_arch + "}": lld_link_path,
         "%{clang_cl_lib_path_" + target_arch + "}": llvm_lib_path,
-        # clang-cl does not support assembly files as input.
-        "%{clang_cl_ml_path_" + target_arch + "}": msvc_vars["%{msvc_ml_path_" + target_arch + "}"],
+        "%{clang_cl_ml_path_" + target_arch + "}": clang_cl_path,
         # LLVM's lld-link.exe doesn't support /DEBUG:FASTLINK.
         "%{clang_cl_dbg_mode_debug_flag_" + target_arch + "}": "/DEBUG",
         "%{clang_cl_fastbuild_mode_debug_flag_" + target_arch + "}": "/DEBUG",
