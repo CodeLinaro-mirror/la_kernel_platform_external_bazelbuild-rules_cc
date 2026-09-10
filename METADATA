@@ -7,14 +7,14 @@ description: "A repository of Starlark implementation of C++ rules in Bazel"
 third_party {
   license_type: NOTICE
   last_upgrade_date {
-    year: 2025
-    month: 10
-    day: 24
+    year: 2026
+    month: 9
+    day: 10
   }
   identifier {
     type: "Git"
     value: "https://github.com/bazelbuild/rules_cc"
-    version: "475affc3b522d20b0f8f2353008099b101ef57a9"
-    closest_version: "0.2.11"
+    version: "285fdce428cf3c5cf8e35c9f0ac4247e8e27ec58"
+    closest_version: "0.2.14"
   }
 }
