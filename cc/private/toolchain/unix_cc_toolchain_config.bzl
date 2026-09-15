@@ -30,6 +30,7 @@ load(
     "with_feature_set",
 )
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
+load("@rules_cc//cc/toolchains:cc_toolchain_config_info.bzl", "CcToolchainConfigInfo")
 
 def _target_os_version(ctx):
     platform_type = ctx.fragments.apple.single_arch_platform.platform_type
@@ -346,6 +347,10 @@ def _impl(ctx):
     supports_pic_feature = feature(
         name = "supports_pic",
         enabled = True,
+    )
+    prefer_pic_for_opt_binaries_feature = feature(
+        name = "prefer_pic_for_opt_binaries",
+        enabled = False,
     )
     supports_start_end_lib_feature = feature(
         name = "supports_start_end_lib",
@@ -1370,6 +1375,7 @@ def _impl(ctx):
                 flag_groups = [
                     flag_group(
                         flags = [
+                            "-no_warning_for_no_symbols",
                             "-static",
                             "-o",
                             "%{output_execpath}",
@@ -1831,6 +1837,7 @@ def _impl(ctx):
             strip_debug_symbols_feature,
             coverage_feature,
             supports_pic_feature,
+            prefer_pic_for_opt_binaries_feature,
             asan_feature,
             tsan_feature,
             ubsan_feature,
