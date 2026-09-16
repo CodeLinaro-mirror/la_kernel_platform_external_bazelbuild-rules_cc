@@ -14,25 +14,11 @@
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
-bzl_library(
-    name = "compile_bzl",
-    srcs = glob(["*.bzl"]),
-    visibility = ["//visibility:public"],
-    deps = [
-        "//cc:action_names_bzl",
-        "//cc/common:semantics_bzl",
-        "//cc/private:cc_internal_bzl",
-        "//cc/private/rules_impl:native_cc_common_bzl",
-        "@bazel_skylib//lib:paths",
-    ],
-)
+package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "bzl_srcs",
-    srcs = glob([
-        "**/*.bzl",
-    ]),
-    visibility = ["//visibility:public"],
+    srcs = glob(["**/*.bzl"]),
 )
 
 filegroup(
@@ -42,4 +28,13 @@ filegroup(
         "**/BUILD",
     ]),
     visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "fdo_rules",
+    srcs = glob(["*.bzl"]),
+    visibility = [
+        "//cc:__subpackages__",
+        "//tools/build_defs/go/internal:__subpackages__",
+    ],
 )
