@@ -1,4 +1,4 @@
-# Copyright 2024 The Bazel Authors. All rights reserved.
+# Copyright 2022 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""CcSharedLibraryInfo"""
+#
+"""Native implementation of cc_common."""
 
-load("@cc_compatibility_proxy//:symbols.bzl", _CcSharedLibraryInfo = "CcSharedLibraryInfo")
-
-CcSharedLibraryInfo = _CcSharedLibraryInfo
+# buildifier: disable=native-cc-common
+native_cc_common = cc_common

@@ -17,22 +17,22 @@ load("//cc:starlark_doc_extract_helper.bzl", "starlark_doc_extract_helper")
 
 bzl_library(
     name = "common",
-    srcs = glob(
-        ["*.bzl"],
-        exclude = [
-            "cc_helper.bzl",
-            "cc_debug_helper.bzl",
-            "visibility.bzl",
-            "semantics.bzl",
-            "cc_helper_internal.bzl",
-            "cc_shared_library_info.bzl",
-        ],
-    ),
+    srcs = [
+        "cc_common.bzl",
+        "cc_helper.bzl",
+        "cc_helper_internal.bzl",
+        "cc_info.bzl",
+        "cc_shared_library_hint_info.bzl",
+        "debug_package_info.bzl",
+        "objc_info.bzl",
+        "semantics.bzl",
+        "visibility.bzl",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         "//cc/private:cc_internal_bzl",
         "//cc/private:paths_bzl",
-        "//cc/private/rules_impl:native_bzl",
+        "//cc/private/rules_impl:native_cc_common_bzl",
         "@bazel_skylib//lib:paths",
         "@cc_compatibility_proxy//:symbols_bzl",
     ],
@@ -57,7 +57,7 @@ bzl_library(
     srcs = ["cc_shared_library_info.bzl"],
     visibility = ["//cc:__subpackages__"],
     deps = [
-        "@cc_compatibility_proxy//:proxy_bzl",
+        "@cc_compatibility_proxy//:symbols_bzl",
     ],
 )
 

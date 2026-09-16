@@ -1,4 +1,4 @@
-# Copyright 2024 The Bazel Authors. All rights reserved.
+# Copyright 2026 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""CcSharedLibraryInfo"""
+"""Provides necessary tools to inject rules-based features to legacy toolchains"""
 
-load("@cc_compatibility_proxy//:symbols.bzl", _CcSharedLibraryInfo = "CcSharedLibraryInfo")
+load("@rules_cc//cc/toolchains:cc_toolchain_info.bzl", _FeatureInfo = "FeatureInfo")
+load("@rules_cc//cc/toolchains/impl:legacy_converter.bzl", _convert_feature = "convert_feature")
 
-CcSharedLibraryInfo = _CcSharedLibraryInfo
+convert_feature = _convert_feature
+FeatureInfo = _FeatureInfo

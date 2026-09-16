@@ -14,6 +14,7 @@
 
 """cc_binary Starlark implementation replacing native"""
 
+load("//cc:cc_postmark.bzl", "postmark")
 load("//cc:find_cc_toolchain.bzl", "find_cc_toolchain", "use_cc_toolchain")
 load("//cc/common:cc_common.bzl", "cc_common")
 load("//cc/common:cc_debug_helper.bzl", "create_debug_packager_actions")
@@ -22,7 +23,6 @@ load("//cc/common:cc_info.bzl", "CcInfo")
 load("//cc/common:debug_package_info.bzl", "DebugPackageInfo")
 load("//cc/common:semantics.bzl", "semantics")
 load(":attrs.bzl", "cc_binary_attrs")
-load(":cc_postmark.bzl", "postmark")
 load(":cc_shared_library.bzl", "GraphNodeInfo", "add_unused_dynamic_deps", "build_exports_map_from_only_dynamic_deps", "build_link_once_static_libs_map", "dynamic_deps_initializer", "merge_cc_shared_library_infos", "separate_static_and_dynamic_link_libraries", "sort_linker_inputs", "throw_linked_but_not_exported_errors")
 
 _CcLauncherInfo = cc_common.launcher_provider
@@ -289,7 +289,15 @@ def _filter_libraries_that_are_linked_dynamically(ctx, feature_configuration, cc
         linker_inputs_count,
     )
 
-    return cc_common.create_linking_context(linker_inputs = depset(sorted_linker_inputs, order = "topological"))
+    # Deps that came from cc_runtimes may have been filtered out above, so we need to re-add them.
+    # For example, libc++/libstdc++ or malloc-like deps should still be linked in normally
+    # even though they will also be a transitive dep of things in dynamic_deps.
+    cc_runtimes = semantics.get_cc_runtimes(ctx, _is_link_shared(ctx))
+    cc_runtimes_infos = [dep[CcInfo] for dep in cc_runtimes if CcInfo in dep]
+
+    return cc_common.merge_cc_infos(direct_cc_infos = [
+        CcInfo(linking_context = cc_common.create_linking_context(linker_inputs = depset(sorted_linker_inputs, order = "topological"))),
+    ] + cc_runtimes_infos).linking_context
 
 def _create_transitive_linking_actions(
         ctx,
@@ -375,6 +383,7 @@ def _create_transitive_linking_actions(
 
     if len(ctx.attr.dynamic_deps) > 0:
         cc_linking_context = _filter_libraries_that_are_linked_dynamically(ctx, feature_configuration, cc_linking_context)
+
     link_deps_statically = True
     if linking_mode == linker_mode.LINKING_DYNAMIC:
         link_deps_statically = False
@@ -538,6 +547,7 @@ def cc_binary_impl(ctx, additional_linkopts, force_linkstatic = False):
         module_interfaces = cc_helper.get_cpp_module_interfaces(ctx),
         compilation_contexts = compilation_context_deps,
         code_coverage_enabled = cc_helper.is_code_coverage_enabled(ctx = ctx),
+        additional_inputs = ctx.files.additional_compiler_inputs,
     )
     precompiled_file_objects = cc_common.create_compilation_outputs(
         objects = depset(precompiled_files[0]),  # objects
@@ -617,7 +627,7 @@ def cc_binary_impl(ctx, additional_linkopts, force_linkstatic = False):
     # On macOS, if cpp_config.apple_generate_dsym is enabled
     # then a .dSYM file will be built along with the executable.
     dsym_file = None
-    if cpp_config.apple_generate_dsym:
+    if cc_common.is_enabled(feature_configuration = feature_configuration, feature_name = "generate_dsym_file"):
         dsym_file = ctx.actions.declare_directory(
             "{name}.dSYM".format(
                 name = target_name,
@@ -635,8 +645,12 @@ def cc_binary_impl(ctx, additional_linkopts, force_linkstatic = False):
     extra_link_time_libraries = deps_cc_linking_context._extra_link_time_libraries.libraries
     linker_inputs_extra = depset()
     runtime_libraries_extra = depset()
+    additional_stamp_infos = []
     if extra_link_time_libraries != None:
-        linker_inputs_extra, runtime_libraries_extra = cc_common.build_extra_link_time_libraries(extra_libraries = extra_link_time_libraries, ctx = ctx, static_mode = linking_mode != linker_mode.LINKING_DYNAMIC, for_dynamic_library = _is_link_shared(ctx))
+        extra_library_info = cc_common.build_extra_link_time_libraries(extra_libraries = extra_link_time_libraries, ctx = ctx, static_mode = linking_mode != linker_mode.LINKING_DYNAMIC, for_dynamic_library = _is_link_shared(ctx))
+        linker_inputs_extra = extra_library_info.transitive_linker_inputs
+        runtime_libraries_extra = extra_library_info.transitive_runtime_libraries
+        additional_stamp_infos = extra_library_info.additional_stamp_infos
 
     use_postmark = postmark.get_use_postmark(ctx)
     output_binary_for_linking = binary
@@ -675,6 +689,7 @@ def cc_binary_impl(ctx, additional_linkopts, force_linkstatic = False):
             cc_toolchain,
             binary,
             output_binary_for_linking,
+            additional_stamp_infos = additional_stamp_infos,
         )
 
     cc_linking_outputs_binary_library = cc_linking_outputs_binary.library_to_link

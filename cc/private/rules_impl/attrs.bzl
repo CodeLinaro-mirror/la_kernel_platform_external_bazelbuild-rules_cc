@@ -15,9 +15,9 @@
 """Attributes for cc_binary.
 """
 
+load("//cc:cc_postmark.bzl", "postmark")
 load("//cc/common:cc_info.bzl", "CcInfo")
 load("//cc/common:semantics.bzl", "semantics")
-load("//cc/private/rules_impl:cc_postmark.bzl", "postmark")
 load(":cc_shared_library.bzl", "dynamic_deps_attrs")
 
 visibility("private")
@@ -210,6 +210,15 @@ Dependencies that are only made available to the C++ linker command.
   For example, compiled Windows .res files can be provided here to be embedded in
   the binary target.
 </p>
+""",
+    ),
+    "additional_compiler_inputs": attr.label_list(
+        allow_files = True,
+        flags = ["ORDER_INDEPENDENT", "DIRECT_COMPILE_TIME_INPUT"],
+        doc = """
+Any additional files you might want to pass to the compiler command line, such as sanitizer
+ignorelists, for example. Files specified here can then be used in copts with the
+$(location) function.
 """,
     ),
     "win_def_file": attr.label(
